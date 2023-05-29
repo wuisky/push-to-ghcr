@@ -5,9 +5,9 @@ description: "This action simplifies pushes of Docker images ot ghcr.io reposito
 branding:
   icon: "arrow-up-circle"
   color: "blue"
-  
+
 inputs:
-  github_token: 
+  github_token:
      description: "Your secrets.GITHUB_TOKEN"
      required: true
 
@@ -37,7 +37,7 @@ inputs:
   docker_io_token:
     description: "Your docker.io token created via https://hub.docker.com/settings/security"
     required: false
-  
+
   image_tag:
     description: Image tag, e.g. latest. Will overwrite the tag latest tag on a push, and have no effect on a release.
     required: false
@@ -74,7 +74,7 @@ runs:
             export COMMIT_TAG=${IMAGE_TAG}
           fi
         fi
-        
+
         # lowercase the image name, see https://github.com/macbre/push-to-ghcr/issues/12
         export IMAGE_NAME=$(echo ${IMAGE_NAME} | tr '[:upper:]' '[:lower:]')
 
@@ -96,6 +96,7 @@ runs:
           \
           --build-arg BUILD_DATE=${BUILD_DATE} \
           --build-arg GITHUB_SHA=${GITHUB_SHA} \
+          --build-arg DOCKERFILE_COMMIT_SHORT_SHA=`md5sum ${{ inputs.dockerfile }} | cut -d ' ' -f 1| cut -c1-7` \
           \
           --tag ${{ inputs.repository }}/${IMAGE_NAME}:${COMMIT_TAG} \
           --tag docker.io/${IMAGE_NAME}:${COMMIT_TAG} \
