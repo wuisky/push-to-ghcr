@@ -42,6 +42,11 @@ inputs:
     description: Image tag, e.g. latest. Will overwrite the tag latest tag on a push, and have no effect on a release.
     required: false
 
+  skip_build:
+    description: |
+      skip_build image.push to ghcr.io only.
+    default: 'false'
+
 runs:
   using: "composite"
   steps:
@@ -55,6 +60,7 @@ runs:
         DOCKER_IO_TOKEN: ${{ inputs.docker_io_token }}
         IMAGE_NAME: ${{ inputs.image_name }}
         IMAGE_TAG: ${{ inputs.image_tag }}
+        SKIP_BUILD: ${{ inputs.skip_build }}
 
       run: |
         echo "Using $(docker -v)"
@@ -88,28 +94,29 @@ runs:
 
         # https://docs.docker.com/develop/develop-images/build_enhancements/
         # https://docs.docker.com/engine/reference/commandline/build/#specifying-external-cache-sources
-        >&0 docker build \
-          --file ${{ inputs.dockerfile }} \
-          --cache-from ${{ inputs.repository }}/${IMAGE_NAME}:latest \
-          --build-arg BUILDKIT_INLINE_CACHE=1 \
-          \
-          --build-arg BUILD_DATE=${BUILD_DATE} \
-          --build-arg GITHUB_SHA=${GITHUB_SHA} \
-          --build-arg DOCKERFILE_COMMIT_SHORT_SHA=`md5sum ${{ inputs.dockerfile }} | cut -d ' ' -f 1| cut -c1-7` \
-          --build-arg VERSION=${{ inputs.image_tag }} \
-          \
-          --tag ${{ inputs.repository }}/${IMAGE_NAME}:${COMMIT_TAG} \
-          --tag docker.io/${IMAGE_NAME}:${COMMIT_TAG} \
-          \
-          --label org.label-schema.build-date=${BUILD_DATE} \
-          --label org.label-schema.vcs-url=${GITHUB_URL} \
-          --label org.label-schema.vcs-ref=${GITHUB_SHA} \
-          \
-          --label org.opencontainers.image.created=${BUILD_DATE} \
-          --label org.opencontainers.image.source=${GITHUB_URL} \
-          --label org.opencontainers.image.revision=${GITHUB_SHA} \
-          ${{ inputs.context }}
-
+        if [[ "${SKIP_BUILD}" == "false" ]] ; then
+          >&0 docker build \
+            --file ${{ inputs.dockerfile }} \
+            --cache-from ${{ inputs.repository }}/${IMAGE_NAME}:latest \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+           \
+            --build-arg BUILD_DATE=${BUILD_DATE} \
+            --build-arg GITHUB_SHA=${GITHUB_SHA} \
+            --build-arg DOCKERFILE_COMMIT_SHORT_SHA=`md5sum ${{ inputs.dockerfile }} | cut -d ' ' -f 1| cut -c1-7` \
+            --build-arg VERSION=${{ inputs.image_tag }} \
+            \
+            --tag ${{ inputs.repository }}/${IMAGE_NAME}:${COMMIT_TAG} \
+            --tag docker.io/${IMAGE_NAME}:${COMMIT_TAG} \
+            \
+            --label org.label-schema.build-date=${BUILD_DATE} \
+            --label org.label-schema.vcs-url=${GITHUB_URL} \
+            --label org.label-schema.vcs-ref=${GITHUB_SHA} \
+            \
+            --label org.opencontainers.image.created=${BUILD_DATE} \
+            --label org.opencontainers.image.source=${GITHUB_URL} \
+            --label org.opencontainers.image.revision=${GITHUB_SHA} \
+            ${{ inputs.context }}
+        fi
         echo "::endgroup::"
 
         echo "::group::Inspecting the image ..."
